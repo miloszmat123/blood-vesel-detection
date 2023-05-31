@@ -1,17 +1,12 @@
 import math
 
 import cv2
-import numpy as np
 import matplotlib.pyplot as plt
-from skimage import filters, exposure
-from sklearn.model_selection import KFold
-from sklearn.tree import DecisionTreeClassifier
-from joblib import dump, load
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GridSearchCV
+import numpy as np
 from imblearn.under_sampling import RandomUnderSampler
+from joblib import dump, load
+from skimage import filters
+from sklearn.ensemble import RandomForestClassifier
 
 PATCH_SIZE = 5
 
