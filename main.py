@@ -1,8 +1,11 @@
 import math
+import sys
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import streamlit as st
+from PIL import Image
 from imblearn.under_sampling import RandomUnderSampler
 from joblib import dump, load
 from skimage import filters
@@ -127,6 +130,42 @@ def calculate_metrics(predicted, model):
     print("F-measure: ", f_measure)
 
 
+def calculate_metrics_streamlit(predicted, model):
+    width, height = predicted.shape
+    true_positive = 0
+    false_positive = 0
+    false_negative = 0
+    true_negative = 0
+    for x in range(width):
+        for y in range(height):
+            if predicted[x][y] and model[x][y]:
+                true_positive += 1
+
+            elif predicted[x][y] and not model[x][y]:
+                false_positive += 1
+
+            elif not predicted[x][y] and model[x][y]:
+                false_negative += 1
+
+            elif not predicted[x][y] and not model[x][y]:
+                true_negative += 1
+
+    accuracy = round(
+        (true_positive + true_negative) / (true_positive + false_positive + false_negative + true_negative), 4)
+    sensitivity = round(true_positive / (true_positive + false_negative + 1), 4)
+    specificity = round(true_negative / (false_positive + true_negative + 1), 4)
+    precision = round(true_positive / (true_positive + false_positive + 1), 4)
+    g_mean = round(math.sqrt(sensitivity * specificity), 4)
+    f_measure = round((2 * precision * sensitivity) / (precision + sensitivity + 1), 4)
+    data = {
+        'Metric': ['Accuracy', 'Sensitivity', 'Specificity', 'Precision', 'G-mean', 'F-measure'],
+        'Value': [accuracy, sensitivity, specificity, precision, g_mean, f_measure]
+    }
+
+    st.write('Evaluation Metrics')
+    st.table(data)
+
+
 def calculate_confusion_matrix(image, predicted, model):
     width, height = predicted.shape
     white = (255, 255, 255)
@@ -190,5 +229,72 @@ def main():
     calculate_metrics(predicted_ml, model)
 
 
+def image_reading(path):
+    im = Image.open(path)
+    array = np.array(im)
+    if len(array.shape) == 3:
+        array = array[:, :, 1]
+    return array
+
+
+def normalize_image(filtered_image):
+    filtered_image = filtered_image.astype(np.float64)
+    filtered_image -= np.min(filtered_image)
+    filtered_image /= np.max(filtered_image)
+    filtered_image *= 255
+    filtered_image = filtered_image.astype(np.uint8)
+    return filtered_image
+
+
+def main_streamlit():
+    try:
+        st.title('Blood Vesel Detection')
+        st.write('Upload an image to detect')
+        image_file = st.file_uploader("Choose an image...", type="jpg", key="image")
+        image = Image.open(image_file).convert('RGB')
+        image = np.array(image)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = filters.unsharp_mask(gray)
+
+        st.write('Upload image mask')
+        mask_file = st.file_uploader("Choose an image...", type="jpg", key="mask")
+        mask = image_reading(mask_file)
+        mask = mask > 100
+        gray[mask == 0] = 0
+
+        st.write('Upload image model')
+        model_file = st.file_uploader("Choose an image...", type="jpg", key="model")
+        model = image_reading(model_file)
+        model = model > 10
+        model[mask == 0] = 0
+
+        st.image(image, caption='Input Image', use_column_width=True)
+        st.image(normalize_image(model), caption='Model Image', use_column_width=True, clamp=True)
+
+        sato = filters.sato(gray)
+        predicted_vision = sato > 0.012
+        predicted_vision[mask == 0] = 0
+
+        conf_matrix1 = calculate_confusion_matrix(image, predicted_vision, model)
+        calculate_metrics(predicted_vision, model)
+
+        classifier = load_model()
+        predictions = classifier.predict(get_features(image, gray, mask))
+        predicted_ml = get_predicted_image(gray, predictions, mask)
+
+        conf_matrix2 = calculate_confusion_matrix(image, predicted_ml, model)
+        calculate_metrics(predicted_ml, model)
+
+        st.image(normalize_image(predicted_vision), caption='Result using Image Processing', use_column_width=True)
+        st.image(conf_matrix1, caption='Confusion Matrix', use_column_width=True, clamp=True)
+        calculate_metrics_streamlit(predicted_vision, model)
+
+        st.image(normalize_image(predicted_ml), caption='Result using ML', use_column_width=True)
+        st.image(conf_matrix2, caption='Confusion Matrix', use_column_width=True, clamp=True)
+        calculate_metrics_streamlit(predicted_ml, model)
+    except:
+        pass
+
+
 if __name__ == '__main__':
-    main()
+    main_streamlit()
