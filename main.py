@@ -15,9 +15,10 @@ PATCH_SIZE = 5
 
 
 def get_features(image, gray, mask):
-    features = []
     height, width = gray.shape
-
+    num_patches = (height - PATCH_SIZE + 1) * (width - PATCH_SIZE + 1)
+    features = np.zeros((num_patches, 37))
+    index = 0
     for y in range(0, height - PATCH_SIZE + 1):
         for x in range(0, width - PATCH_SIZE + 1):
             patch = image[y:y + PATCH_SIZE, x:x + PATCH_SIZE]
@@ -28,19 +29,23 @@ def get_features(image, gray, mask):
             moments = cv2.moments(patch_gray)
             hu_moments = cv2.HuMoments(moments).flatten()
             feature_vector = np.hstack([mean, std, [x for x in moments.values()], hu_moments])
-            features.append(feature_vector)
+            features[index] = feature_vector
+            index += 1
     return features
 
 
 def get_labels(image, mask):
-    labels = []
     height, width = image.shape
 
+    num_patches = (height - PATCH_SIZE + 1) * (width - PATCH_SIZE + 1)
+    labels = np.zeros(num_patches)
+    index = 0
     for y in range(0, height - PATCH_SIZE + 1):
         for x in range(0, width - PATCH_SIZE + 1):
             patch = image[y:y + PATCH_SIZE, x:x + PATCH_SIZE]
             label = patch[PATCH_SIZE // 2, PATCH_SIZE // 2]
-            labels.append(label)
+            labels[index] = label
+            index += 1
     return labels
 
 
