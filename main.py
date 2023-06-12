@@ -235,11 +235,9 @@ def main():
 
 
 def image_reading(path):
-    im = Image.open(path)
+    im = Image.open(path).convert('RGB')
     array = np.array(im)
-    if len(array.shape) == 3:
-        array = array[:, :, 1]
-    return array
+    return cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
 
 
 def normalize_image(filtered_image):
@@ -256,7 +254,7 @@ def main_streamlit():
         st.title('Blood Vesel Detection')
         st.write('Upload an image to detect')
         image_file = st.file_uploader("Choose an image...", type="jpg", key="image")
-        image = Image.open(image_file).convert('RGB')
+        image = Image.open(image_file).convert('BGR;24')
         image = np.array(image)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = filters.unsharp_mask(gray)
@@ -273,7 +271,7 @@ def main_streamlit():
         model = model > 10
         model[mask == 0] = 0
 
-        st.image(image, caption='Input Image', use_column_width=True)
+        st.image(image, caption='Input Image', use_column_width=True, channels='BGR')
         st.image(normalize_image(model), caption='Model Image', use_column_width=True, clamp=True)
 
         sato = filters.sato(gray)
